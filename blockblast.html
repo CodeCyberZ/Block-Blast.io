@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Blast</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial Black;
+            background-color: #5293bb; /* White background */
+            color: #3e4a59;
+            text-shadow: -2px -2px 5px rgba(256, 256, 256, 0.25), 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+          color: goldenrod;
+          font-size: 50px;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(8, 48px);
+            grid-template-rows: repeat(8, 48px);
+            gap: 1px;
+            margin: 20px auto;
+            width: 395px;
+            height: 395px;
+            background: #003a;
+            padding: 1px;
+            border-radius: 1px;
+            align: center;
+            border: inset 7px #3776A1;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #3776A1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            border-radius: 1px;
+            box-shadow: inset 0 0 1px rgba(0,0,0,1);
+        }
+        .highlight {
+            background-color: red; /* Light pink highlight */
+        }
+        .block-container {
+            display: flex;
+            justify-content: center;
+            gap: 2px;
+            margin-top: 1px;
+        }
+        .block {
+            display: grid;
+            gap: 1px;
+            padding: 1px;
+            border-radius: 10px;
+            cursor: grab;
+            transition: all 0.3s ease-in-out;
+        }
+        .block:hover {
+           transform: scale(1.1);
+        }
+        .block div {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            background: #fef3bd;
+            border-radius: 1px;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.1);
+        }
+        #score {
+            font-size: 30px;
+            font-weight: bold;
+            margin-top: 1px;
+            color: gold;
+        }
+        #restart {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #ff6347;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>BLOCK BLAST</h1>
+    <div id="score">0 ✨</div>
+    <div id="grid"></div>
+    <div class="block-container" id="block-container"></div>
+    <button id="restart">Restart Game</button>
+
+    <script>
+const gridSize = 8;
+const grid = [];
+const emojiColors = {
+    "🟥": "#C70039", // Metallic Red
+    "🟧": "#FF5733", // Metallic Orange
+    "🟨": "#FFD700", // Metallic Yellow
+    "🟩": "#4CAF50", // Metallic Green
+    "🟦": "#4682B4", // Metallic Blue
+    "🟪": "#8A2BE2"  // Metallic Violet
+};
+const emojis = Object.keys(emojiColors);
+let score = 0;
+let currentBlock = null;
+let availableBlocks = [];
+const gameOverSound = new Audio('https://dw.convertfiles.com/files/0802015001738581382/mixkit-arcade-game-over-3068.mp3'); // Game over sound
+
+function createGrid() {
+    const gridElement = document.getElementById("grid");
+    gridElement.innerHTML = "";
+    for (let r = 0; r < gridSize; r++) {
+        grid[r] = [];
+        for (let c = 0; c < gridSize; c++) {
+            grid[r][c] = "";
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+            gridElement.appendChild(cell);
+        }
+    }
+}
+
+function generateBlockShapes() {
+    return [
+        [[1, 1], [1, 1]], // 2x2 block
+        [[1, 1, 1], [1, 1, 1], [1, 1, 1]], // 3x3 block
+        [[1, 1, 1]], // Horizontal block
+        [[1], [1], [1]], // Vertical block
+        [[1, 1, 1], [0, 1, 0]], // T block
+        [[0, 1, 0], [1, 1, 1]], // Reverse T block
+        [[0, 1, 1], [1, 1, 0]], // S block
+        [[1, 1, 0], [0, 1, 1]], // Z block
+        [[1, 0], [1, 0], [1, 1]], // L block
+        [[0, 1], [0, 1], [1, 1]] // Reverse L block
+        [[1, 1], [1, 1], [1, 1]], // 2x3 block
+        [[1, 1, 1], [1, 1, 1]], // 3x2 block
+        [[0, 1], [1, 1], [0, 1]], // Left block
+        [[1, 0], [1, 1], [1, 0]] // Right block
+    ];
+}
+
+function getRandomBlocks() {
+    const shapes = generateBlockShapes();
+    const shuffledShapes = shapes.sort(() => Math.random() - 0.5).slice(0, 3);
+    const shuffledEmojis = emojis.sort(() => Math.random() - 0.5).slice(0, 3);
+
+    return shuffledShapes.map((shape, index) => ({
+        shape,
+        emoji: shuffledEmojis[index],
+        color: emojiColors[shuffledEmojis[index]]
+    }));
+}
+
+function createBlocks() {
+    if (availableBlocks.length === 0) {
+        availableBlocks = getRandomBlocks();
+    }
+
+    const blockContainer = document.getElementById("block-container");
+    blockContainer.innerHTML = "";
+
+    availableBlocks.forEach((block, index) => {
+        const blockDiv = document.createElement("div");
+        blockDiv.className = "block";
+        blockDiv.style.gridTemplateColumns = `repeat(${block.shape[0].length}, 50px)`;
+        blockDiv.style.gridTemplateRows = `repeat(${block.shape.length}, 50px)`;
+
+        block.shape.forEach(row => {
+            row.forEach(cell => {
+                const blockCell = document.createElement("div");
+                if (cell) {
+                    blockCell.textContent = block.emoji;
+                    blockCell.style.backgroundColor = block.color;
+                    blockCell.style.border = `5px outset ${block.color}`;
+                    blockCell.style.boxSizing = "border-box";
+                    blockCell.style.fontSize = "0";
+                    
+                } else {
+                    blockCell.style.visibility = "hidden";
+                }
+                blockDiv.appendChild(blockCell);
+            });
+        });
+
+        blockDiv.draggable = true;
+        blockDiv.addEventListener("dragstart", (e) => {
+            currentBlock = { ...block, index };
+            e.dataTransfer.setData("block", JSON.stringify(block.shape));
+        });
+
+        blockContainer.appendChild(blockDiv);
+    });
+}
+
+function checkGrid() {
+    let cleared = false;
+    const clearSound = new Audio('https://dw.convertfiles.com/files/0879958001738580892/mixkit-arcade-bonus-alert-767.mp3');
+    const blastCells = [];
+
+    // Check full rows
+    for (let r = 0; r < gridSize; r++) {
+        if (grid[r].every(cell => cell !== "")) {
+            grid[r].fill(""); // Clear the row
+            for (let c = 0; c < gridSize; c++) {
+                blastCells.push({ row: r, col: c });
+            }
+            score += 111;
+            cleared = true;
+        }
+    }
+
+    // Check full columns
+    for (let c = 0; c < gridSize; c++) {
+        if (grid.every(row => row[c] !== "")) {
+            grid.forEach(row => row[c] = ""); // Clear the column
+            for (let r = 0; r < gridSize; r++) {
+                blastCells.push({ row: r, col: c });
+            }
+            score += 111;
+            cleared = true;
+        }
+    }
+
+    if (cleared) {
+        clearSound.play();
+        animateBlastEffect(blastCells);
+        setTimeout(() => {
+            animateScoreIncrease(score);
+            document.getElementById("score").textContent = `${score} `;
+            renderGrid(); // Re-render grid after blast animation
+        }, 500);
+    }
+}
+
+function renderGrid() {
+    const gridCells = document.querySelectorAll(".cell");
+
+    gridCells.forEach(cell => {
+        const r = cell.dataset.row;
+        const c = cell.dataset.col;
+
+        if (grid[r][c]) {
+            const { color } = grid[r][c]; // No need for emoji now
+
+            // Apply block styling
+            cell.style.backgroundColor = color;
+            cell.style.border = `5px outset ${color}`;
+            cell.style.boxSizing = "border-box";
+            // Remove emoji from text content
+            cell.textContent = "";  
+        } else {
+            cell.textContent = "";
+            cell.style.backgroundColor = "";
+            cell.style.border = "none";
+        }
+    });
+}
+
+document.getElementById("grid").addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.target.classList.add('highlight');
+});
+
+document.getElementById("grid").addEventListener("dragleave", (e) => {
+    e.target.classList.remove('highlight');
+});
+
+
+
+document.getElementById("grid").addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.target.classList.remove('highlight');
+    const row = parseInt(e.target.dataset.row);
+    const col = parseInt(e.target.dataset.col);
+
+    if (placeBlock(row, col, currentBlock.shape, currentBlock.emoji, currentBlock.color)) {
+        const dropSound = new Audio('https://dw.convertfiles.com/files/0564687001738579455/mixkit-unlock-game-notification-253.mp3');
+        dropSound.play();
+
+        availableBlocks.splice(currentBlock.index, 1); 
+        if (availableBlocks.length === 0) {
+            createBlocks(); 
+        } else {
+            createBlocks();
+        }
+
+        checkGrid();
+    } else {
+        gameOverSound.play(); // Play game over sound
+        alert("Game Over! No more space to fit the block.");
+        document.getElementById("restart").style.display = "inline";
+    }
+});
+
+function placeBlock(row, col, shape, emoji, color) {
+    if (row + shape.length > gridSize || col + shape[0].length > gridSize) return false;
+
+    for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c] && grid[row + r][col + c] !== "") return false;
+        }
+    }
+
+    let filledCells = 0;
+
+    for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c]) {
+                grid[row + r][col + c] = { emoji, color };
+                filledCells++; 
+            }
+        }
+    }
+
+    score += filledCells * 11; // Update the score
+animateScoreIncrease(score); // Animate the score increase
+    document.getElementById("score").textContent = `${score} ✨`;
+
+    renderGrid();
+    return true;
+}
+
+document.getElementById("restart").addEventListener("click", () => {
+    score = 0;
+    document.getElementById("score").textContent = `${score} ✨`;
+    createGrid();
+    availableBlocks = getRandomBlocks();
+    createBlocks();
+    document.getElementById("restart").style.display = "none";
+});
+
+createGrid();
+createBlocks();
+
+function animateScoreIncrease(newScore) {
+    const scoreElement = document.getElementById("score");
+    let currentScore = parseInt(scoreElement.textContent);
+    let increment = newScore > currentScore ? 1 : -1;
+
+    const updateScore = () => {
+        if (currentScore !== newScore) {
+            currentScore += increment;
+            scoreElement.textContent = `${currentScore} ✨`;
+            setTimeout(updateScore, 20); // Adjust the speed of increase
+        } else {
+            scoreElement.textContent = `${newScore} ✨`;
+        }
+    };
+
+    updateScore();
+}
+function animateBlastEffect(blastCells) {
+    blastCells.forEach(({ row, col }) => {
+        const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+        if (cell) {
+            cell.style.transition = "transform 0.3s ease-out, background-color 0.3s ease-out";
+            cell.style.transform = "scale(1.5)";
+            cell.style.backgroundColor = "gold";
+            setTimeout(() => {
+                cell.style.transform = "scale(1)";
+                cell.style.backgroundColor = "";
+            }, 300);
+        }
+    });
+}
+    </script>
+</body>
+</html>
