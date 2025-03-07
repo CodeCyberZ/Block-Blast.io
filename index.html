@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kardo</title>
+    <style>
+      body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: white;
+}
+b {
+  vertical-align: -8px;
+}
+
+.container {
+    text-align: center;
+}
+
+img {
+    width: 300px;
+    height: auto;
+    margin-top: 20px;
+    transition: opacity 0.5s ease-in-out;
+    border-radius: 100px;
+    transform: rotate(17deg);
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: limegreen;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: red;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+      <img id="image" src="1741098889376.jpg" alt="Image">
+      <br><br>
+       <b>OFF  </b><label class="switch">
+            <input type="checkbox" id="toggleSwitch">
+            <span class="slider"></span>
+        </label><b>  ON</b>
+    </div>
+
+    <script>
+      document.getElementById("toggleSwitch").addEventListener("change", function() {
+    const image = document.getElementById("image");
+
+    if (this.checked) {
+        image.src = "1741098877920.jpg"; // Change to the second image
+    } else {
+        image.src = "1741098889376.jpg"; // Change back to the first image
+    }
+});
+    </script>
+</body>
+</html>
